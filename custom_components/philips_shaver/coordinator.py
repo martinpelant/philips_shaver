@@ -165,9 +165,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
     async def async_start(self) -> None:
-        """Start initial refresh and live monitoring. Call after setup is complete."""
-        self.hass.async_create_task(self.async_refresh())
-
+        """Start live monitoring. Call after setup is complete."""
         if self.enable_live_updates:
             self._live_task = self.hass.loop.create_task(self._start_live_monitoring())
         else:
@@ -242,6 +240,11 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self.address,
                     POLL_READ_CHARS,
                 )
+                
+                # Check if we actually got any data
+                if not any(v is not None for v in results.values()):
+                    raise UpdateFailed("Could not connect to shaver or no data received")
+
                 return self._process_results(results)
             except Exception as err:
                 raise UpdateFailed(f"Error communicating with device: {err}") from err
