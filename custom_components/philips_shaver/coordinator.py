@@ -114,12 +114,6 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._connection_lock = asyncio.Lock()
         self._live_task: asyncio.Task | None = None
 
-        # Pre-create live callbacks to avoid garbage collection churn
-        self._live_callbacks = {
-            key: self._make_live_callback(key)
-            for key in self.KEY_TO_UUID_MAPPING
-        }
-
         _LOGGER.debug(
             "Initializing coordinator for %s with poll interval %s seconds (live updates: %s)",
             self.address,
@@ -167,7 +161,9 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_start(self) -> None:
         """Start live monitoring. Call after setup is complete."""
         if self.enable_live_updates:
-            self._live_task = self.hass.loop.create_task(self._start_live_monitoring())
+            self._live_task = self.entry.async_create_background_task(
+                self.hass, self._start_live_monitoring(), "philips_shaver_monitoring"
+            )
         else:
             _LOGGER.info("Live updates disabled – polling only")
 
@@ -176,8 +172,11 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         @callback
         def _advertisement_debug_callback(service_info, change):
+            if not _LOGGER.isEnabledFor(logging.DEBUG):
+                return
+
             adv = service_info.advertisement
-            _LOGGER.debug(  # debug instead of warning -> less noisy
+            _LOGGER.debug(
                 "ADVERTISEMENT %s | Name: %s | RSSI: %s dBm | "
                 "Mfr: %s | SvcData: %s | SvcUUIDs: %s",
                 service_info.address,
@@ -196,12 +195,12 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 adv.service_uuids or "none",
             )
 
-        # Log only for this specific device
+        # Log only for this specific device - PASSIVE scanning is enough
         self._unsub_adv_debug = async_register_callback(
             self.hass,
             _advertisement_debug_callback,
             BluetoothCallbackMatcher(address=self.address),
-            BluetoothScanningMode.ACTIVE,
+            BluetoothScanningMode.PASSIVE,
         )
 
     # ------------------------------------------------------------------
@@ -583,9 +582,9 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         for char_uuid, key in self.KEY_TO_UUID_MAPPING.items():
             try:
-                # Re-use pre-created callback to avoid memory churn
+                # Create callback on-demand to avoid permanent circular references
                 await self.live_client.start_notify(
-                    char_uuid, self._live_callbacks[key]
+                    char_uuid, self._make_live_callback(key)
                 )
                 _LOGGER.debug("Started notifications for %s", key)
             except Exception as e:
@@ -606,7 +605,6 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_shutdown(self) -> None:
         """Called on unload – cleans everything up properly."""
         await self._stop_all_notifications()
-        self._live_callbacks.clear()
 
         if hasattr(self, "_unsub_adv_debug") and self._unsub_adv_debug:
             self._unsub_adv_debug()
