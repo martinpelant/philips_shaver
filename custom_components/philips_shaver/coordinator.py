@@ -146,7 +146,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             _LOGGER.info("Live updates disabled – polling only")
 
-    async def _async_start_advertisement_logging(self) -> None:
+    def _start_advertisement_logging(self) -> None:
         """Loggt jedes Advertisement des Rasierers (super hilfreich beim Debuggen)."""
 
         @callback
@@ -228,69 +228,115 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return self.data
 
         new_data = self.data.copy() if self.data else {}
+        changed = False
 
         # === Standard GATT Characteristics ===
         if raw := results.get(CHAR_BATTERY_LEVEL):
-            new_data["battery"] = raw[0]
+            val = raw[0]
+            if new_data.get("battery") != val:
+                new_data["battery"] = val
+                changed = True
 
         if raw := results.get(CHAR_FIRMWARE_REVISION):
-            new_data["firmware"] = raw.decode("utf-8", "ignore").strip()
+            val = raw.decode("utf-8", "ignore").strip()
+            if new_data.get("firmware") != val:
+                new_data["firmware"] = val
+                changed = True
 
         if raw := results.get(CHAR_MODEL_NUMBER):
-            new_data["model_number"] = raw.decode("utf-8", "ignore").strip()
+            val = raw.decode("utf-8", "ignore").strip()
+            if new_data.get("model_number") != val:
+                new_data["model_number"] = val
+                changed = True
 
         if raw := results.get(CHAR_SERIAL_NUMBER):
-            new_data["serial_number"] = raw.decode("utf-8", "ignore").strip()
+            val = raw.decode("utf-8", "ignore").strip()
+            if new_data.get("serial_number") != val:
+                new_data["serial_number"] = val
+                changed = True
 
         # === Philips-spezifische Characteristics ===
         if raw := results.get(CHAR_HEAD_REMAINING):
-            new_data["head_remaining"] = raw[0]
+            val = raw[0]
+            if new_data.get("head_remaining") != val:
+                new_data["head_remaining"] = val
+                changed = True
 
         if raw := results.get(CHAR_HEAD_REMAINING_MINUTES):
-            new_data["head_remaining_minutes"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("head_remaining_minutes") != val:
+                new_data["head_remaining_minutes"] = val
+                changed = True
 
         if raw := results.get(CHAR_DAYS_SINCE_LAST_USED):
-            new_data["days_since_last_used"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("days_since_last_used") != val:
+                new_data["days_since_last_used"] = val
+                changed = True
 
         if raw := results.get(CHAR_SHAVING_TIME):
-            new_data["shaving_time"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("shaving_time") != val:
+                new_data["shaving_time"] = val
+                changed = True
 
         if raw := results.get(CHAR_DEVICE_STATE):
             state_byte = raw[0]
-            new_data["device_state"] = {1: "off", 2: "shaving", 3: "charging"}.get(
-                state_byte, "unknown"
-            )
+            val = {1: "off", 2: "shaving", 3: "charging"}.get(state_byte, "unknown")
+            if new_data.get("device_state") != val:
+                new_data["device_state"] = val
+                changed = True
 
         if raw := results.get(CHAR_TRAVEL_LOCK):
-            new_data["travel_lock"] = raw[0] == 1
+            val = raw[0] == 1
+            if new_data.get("travel_lock") != val:
+                new_data["travel_lock"] = val
+                changed = True
 
         if raw := results.get(CHAR_CLEANING_PROGRESS):
-            new_data["cleaning_progress"] = raw[0]
+            val = raw[0]
+            if new_data.get("cleaning_progress") != val:
+                new_data["cleaning_progress"] = val
+                changed = True
 
         if raw := results.get(CHAR_CLEANING_CYCLES):
-            new_data["cleaning_cycles"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("cleaning_cycles") != val:
+                new_data["cleaning_cycles"] = val
+                changed = True
 
         if raw := results.get(CHAR_MOTOR_CURRENT):
-            new_data["motor_current_ma"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("motor_current_ma") != val:
+                new_data["motor_current_ma"] = val
+                changed = True
 
         if raw := results.get(CHAR_MOTOR_CURRENT_MAX):
-            new_data["motor_current_max_ma"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("motor_current_max_ma") != val:
+                new_data["motor_current_max_ma"] = val
+                changed = True
 
         if raw := results.get(CHAR_MOTOR_RPM):
-            # reading raw value as int
             raw_val = int.from_bytes(raw, "little")
-
-            # calculate normalized RPM: Raw / 3.036
-            # rounding to int value
-            new_data["motor_rpm"] = int(round(raw_val / 3.036))
+            val = int(round(raw_val / 3.036))
+            if new_data.get("motor_rpm") != val:
+                new_data["motor_rpm"] = val
+                changed = True
 
         if raw := results.get(CHAR_AMOUNT_OF_CHARGES):
-            new_data["amount_of_charges"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("amount_of_charges") != val:
+                new_data["amount_of_charges"] = val
+                changed = True
 
         if raw := results.get(CHAR_AMOUNT_OF_OPERATIONAL_TURNS):
-            new_data["amount_of_operational_turns"] = int.from_bytes(raw, "little")
+            val = int.from_bytes(raw, "little")
+            if new_data.get("amount_of_operational_turns") != val:
+                new_data["amount_of_operational_turns"] = val
+                changed = True
 
-        # === Farben – mit Konstanten aus const.py ===
+        # === Farben ===
         color_map = {
             CHAR_LIGHTRING_COLOR_LOW: "color_low",
             CHAR_LIGHTRING_COLOR_OK: "color_ok",
@@ -301,35 +347,77 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         for char_uuid, key in color_map.items():
             if raw := results.get(char_uuid):
                 if color := parse_color(raw):
-                    new_data[key] = color
+                    if new_data.get(key) != color:
+                        new_data[key] = color
+                        changed = True
 
         # Shaving mode
         if raw := results.get(CHAR_SHAVING_MODE):
             mode_value = int.from_bytes(raw, "little")
-            new_data["shaving_mode_value"] = mode_value
-            new_data["shaving_mode"] = SHAVING_MODES.get(mode_value, "unknown")
+            mode_name = SHAVING_MODES.get(mode_value, "unknown")
+            if new_data.get("shaving_mode_value") != mode_value:
+                new_data["shaving_mode_value"] = mode_value
+                new_data["shaving_mode"] = mode_name
+                changed = True
 
         # Shaving mode settings
         if raw := results.get(CHAR_SHAVING_MODE_SETTINGS):
-            new_data["shaving_settings"] = parse_shaving_settings_to_dict(raw)
+            val = parse_shaving_settings_to_dict(raw)
+            if new_data.get("shaving_settings") != val:
+                new_data["shaving_settings"] = val
+                changed = True
 
         # Custom shaving mode settings
         if raw := results.get(CHAR_CUSTOM_SHAVING_MODE_SETTINGS):
-            new_data["custom_shaving_settings"] = parse_shaving_settings_to_dict(raw)
+            val = parse_shaving_settings_to_dict(raw)
+            if new_data.get("custom_shaving_settings") != val:
+                new_data["custom_shaving_settings"] = val
+                changed = True
 
         # Pressure
         if raw := results.get(CHAR_PRESSURE):
-            pressure_value = int.from_bytes(raw, "little")
-            new_data["pressure"] = pressure_value
+            val = int.from_bytes(raw, "little")
+            if new_data.get("pressure") != val:
+                new_data["pressure"] = val
+                changed = True
 
         # Total Age
         if raw := results.get(CHAR_TOTAL_AGE):
-            total_age_value = int.from_bytes(raw, "little")
-            new_data["total_age"] = total_age_value
+            val = int.from_bytes(raw, "little")
+            if new_data.get("total_age") != val:
+                new_data["total_age"] = val
+                changed = True
 
-        # Immer aktualisieren – wichtig für "available"
+        # Device Registry Update (nur wenn sich Modell oder FW geändert haben)
+        if changed and (new_data.get("model_number") or new_data.get("firmware")):
+            from homeassistant.helpers import device_registry as dr
+            dev_reg = dr.async_get(self.hass)
+            device = dev_reg.async_get_device(identifiers={(DOMAIN, self.address)})
+            if device:
+                # Nur updaten, wenn wirklich neuere Daten da sind
+                if (device.model != new_data.get("model_number") or 
+                    device.sw_version != new_data.get("firmware")):
+                    dev_reg.async_update_device(
+                        device.id,
+                        model=new_data.get("model_number") or "i9000 / XP9201",
+                        sw_version=new_data.get("firmware"),
+                    )
+
+        # Immer aktualisieren – aber nur den internen Zeitstempel
         new_data["last_seen"] = datetime.now()
-        return new_data
+
+        # NUR wenn sich wirklich Daten geändert haben, geben wir das neue Dict zurück
+        # für DataUpdateCoordinator. Ansonsten bleiben wir beim alten Stand.
+        if changed:
+            return new_data
+        
+        # Falls sich nichts geändert hat, wir aber last_seen aktualisieren wollen,
+        # machen wir das in-place im existierenden Dict, ohne einen Listener-Update
+        # zu triggern (async_set_updated_data).
+        if self.data:
+            self.data["last_seen"] = new_data["last_seen"]
+        
+        return self.data
 
     async def _start_live_monitoring(self) -> None:
         """Dauerhafte Live-Verbindung mit Notifications – exklusiv und intelligent."""
@@ -362,7 +450,6 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     def _on_disconnect(_client):
                         _LOGGER.info("Live connection lost (remote disconnect)")
                         self.live_client = None
-                        self.hass.async_create_task(self._stop_all_notifications())
 
                     _LOGGER.info("Establishing live connection to %s...", self.address)
                     client = await shaver_bluetooth.establish_connection(
@@ -397,7 +484,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _LOGGER.error(
                         "Live monitoring error: %s – retrying in %ds", err, backoff
                     )
-                    if self.live_client and self.live_client.is_connected:
+                    if self.live_client:
                         try:
                             await self.live_client.disconnect()
                         except Exception:
@@ -412,13 +499,19 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 while self.live_client and self.live_client.is_connected:
                     await asyncio.sleep(1)
             except asyncio.CancelledError:
-                _LOGGER.error("Live connection was cancelled")
-                raise  # the task was cancelled from outside
+                _LOGGER.debug("Live monitoring task cancelled")
+                raise
             except Exception as err:
                 _LOGGER.error("Unexpected error in live monitoring: %s", err)
             finally:
+                # IMPORTANT: ensure we stop and disconnect
                 await self._stop_all_notifications()
-                self.live_client = None
+                if self.live_client:
+                    try:
+                        await self.live_client.disconnect()
+                    except Exception:
+                        pass
+                    self.live_client = None
                 _LOGGER.info("Live connection ended – polling will resume")
                 await asyncio.sleep(5)  # kurze Pause vor reconnect
 

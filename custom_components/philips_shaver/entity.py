@@ -43,34 +43,8 @@ class PhilipsShaverEntity(CoordinatorEntity[PhilipsShaverCoordinator]):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        # Nur wenn sich relevante Device-Daten geändert haben → Device aktualisieren
-        data = self.coordinator.data
 
-        model_changed = (
-            self.device_info.get("model") != data.get("model_number")
-            if self.device_info
-            else True
-        )
-        fw_changed = (
-            self.device_info.get("sw_version") != data.get("firmware")
-            if self.device_info
-            else True
-        )
-
-        if model_changed or fw_changed:
-            device_registry = dr.async_get(self.hass)
-            device = device_registry.async_get_device(
-                    identifiers={(DOMAIN, self._address)}
-                )
-
-            if device:
-                device_registry.async_update_device(
-                    device.id,
-                    model=data.get("model_number") or "i9000 / XP9201",
-                    sw_version=data.get("firmware"),
-                )
-
-        # dynamically updating icon
+        # dynamic icon update
         if hasattr(self, "icon"):
             try:
                 new_icon = self.icon
@@ -83,7 +57,7 @@ class PhilipsShaverEntity(CoordinatorEntity[PhilipsShaverCoordinator]):
                     err,
                 )
 
-        self.async_write_ha_state()
+        super()._handle_coordinator_update()
 
     @property
     def available(self) -> bool:

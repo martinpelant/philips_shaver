@@ -28,7 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Start polling/live monitoring after platforms are registered
     await coordinator.async_start()
-    hass.async_create_task(coordinator._async_start_advertisement_logging())
+    coordinator._start_advertisement_logging()
 
     _LOGGER.info("Philips Shaver integration loaded – address: %s", address)
     return True

@@ -103,7 +103,7 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow for Philips Shaver."""
 
     VERSION = 1
-    MINOR_VERSION = 2
+    MINOR_VERSION = 3
 
     discovery_info: BluetoothServiceInfoBleak | None = None
 
@@ -127,8 +127,8 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
         # connecting to the device using retry connector
         # Note: We use standard BleakClient here for discovery,
         # coordinator will use InitialGattCache later.
+        client: BleakClient | None = None
         try:
-            client: BleakClient | None = None
             client = await establish_connection(
                 BleakClient, device, "philips_shaver", timeout=15
             )
@@ -158,6 +158,9 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
         except (BleakConnectionError, TimeoutError) as err:
             _LOGGER.error("Connection error during capabilities fetch: %s", err)
             raise CannotConnectException from err
+        finally:
+            if client and client.is_connected:
+                await client.disconnect()
 
         return capabilities
 
