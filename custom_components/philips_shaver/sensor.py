@@ -351,9 +351,7 @@ class PhilipsDeviceActivitySensor(PhilipsShaverEntity, SensorEntity):
 # =============================================================================
 class PhilipsLastSeenSensor(PhilipsShaverEntity, SensorEntity):
     _attr_translation_key = "last_seen"
-    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:clock-check"
 
@@ -364,11 +362,8 @@ class PhilipsLastSeenSensor(PhilipsShaverEntity, SensorEntity):
         self._attr_unique_id = f"{self._address}_last_seen"
 
     @property
-    def native_value(self) -> int | None:
-        last_seen = self.coordinator.data.get("last_seen")
-        if not last_seen:
-            return None
-        return int((datetime.now() - last_seen).total_seconds() // 60)
+    def native_value(self) -> datetime | None:
+        return self.coordinator.data.get("last_seen")
 
 
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any
 
@@ -223,7 +223,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # 2. We had live data recently -> also skip!
         last_seen = self.data.get("last_seen")
         if last_seen:
-            age = (datetime.now() - last_seen).total_seconds()
+            age = (datetime.now(timezone.utc) - last_seen).total_seconds()
 
             if age < self.poll_interval_seconds:
                 _LOGGER.debug(
@@ -418,6 +418,19 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 new_data["total_age"] = val
                 changed = True
 
+        # Update last_seen only if data changed or heartbeat (30s)
+        now = datetime.now(timezone.utc)
+        last_val = self.data.get("last_seen")
+        
+        # We trigger a coordinator update if data changed OR if last_seen
+        # hasn't been updated in HA for more than 30 seconds.
+        if changed or last_val is None or (now - last_val).total_seconds() >= 30:
+            new_data["last_seen"] = now
+            changed = True
+        else:
+            # Keep the old timestamp to avoid unnecessary state writes
+            new_data["last_seen"] = last_val
+
         # Device Registry Update (only if model or FW has changed)
         if changed and (new_data.get("model_number") or new_data.get("firmware")):
             dev_reg = dr.async_get(self.hass)
@@ -432,19 +445,10 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         sw_version=new_data.get("firmware"),
                     )
 
-        # Always update – but only the internal timestamp
-        new_data["last_seen"] = datetime.now()
-
         # ONLY if data has actually changed do we return the new dict
         # for DataUpdateCoordinator. Otherwise, we stay with the old state.
         if changed:
             return new_data
-        
-        # If nothing has changed but we want to update last_seen,
-        # we do it in-place in the existing dict without triggering a listener update
-        # (async_set_updated_data).
-        if self.data:
-            self.data["last_seen"] = new_data["last_seen"]
         
         return self.data
 

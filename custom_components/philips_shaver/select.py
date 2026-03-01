@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
@@ -82,7 +82,7 @@ class PhilipsShavingModeSelect(PhilipsShaverEntity, SelectEntity):
         new_data = self.coordinator.data.copy()
         new_data["shaving_mode_value"] = val
         new_data["shaving_mode"] = option
-        new_data["last_seen"] = datetime.now()
+        new_data["last_seen"] = datetime.now(timezone.utc)
 
         self.coordinator.async_set_updated_data(new_data)
 
