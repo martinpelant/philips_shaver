@@ -103,7 +103,7 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow for Philips Shaver."""
 
     VERSION = 1
-    MINOR_VERSION = 4
+    MINOR_VERSION = 5
 
     discovery_info: BluetoothServiceInfoBleak | None = None
 

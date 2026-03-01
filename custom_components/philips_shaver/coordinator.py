@@ -23,6 +23,7 @@ from homeassistant.components.bluetooth import (
 from . import bluetooth as shaver_bluetooth
 # ... (rest of imports are same)
 from .const import (
+    DOMAIN,
     CHAR_AMOUNT_OF_CHARGES,
     CHAR_AMOUNT_OF_OPERATIONAL_TURNS,
     CHAR_BATTERY_LEVEL,
