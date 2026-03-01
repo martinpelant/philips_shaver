@@ -551,7 +551,12 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return
 
             # We simulate a results dict with only this one characteristic
-            fake_results = {self._key_to_uuid(key): data}
+            # Use constant-time mapping lookup
+            char_uuid = self.KEY_TO_UUID_MAPPING.get(key)
+            if not char_uuid:
+                return
+            
+            fake_results = {char_uuid: data}
 
             # _process_results() does everything: type conversion, mapping, etc.
             new_data = self._process_results(fake_results)
@@ -563,54 +568,16 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         return _callback
 
-    def _key_to_uuid(self, key: str) -> str:
-        """Mapps data-key → GATT-UUID (for fake results dict)."""
-        mapping = {
-            "device_state": CHAR_DEVICE_STATE,
-            "travel_lock": CHAR_TRAVEL_LOCK,
-            "battery": CHAR_BATTERY_LEVEL,
-            "amount_of_charges": CHAR_AMOUNT_OF_CHARGES,
-            "amount_of_operational_turns": CHAR_AMOUNT_OF_OPERATIONAL_TURNS,
-            "cleaning_progress": CHAR_CLEANING_PROGRESS,
-            "cleaning_cycles": CHAR_CLEANING_CYCLES,
-            "motor_rpm": CHAR_MOTOR_RPM,
-            "motor_current_ma": CHAR_MOTOR_CURRENT,
-            "pressure": CHAR_PRESSURE,
-            "head_remaining": CHAR_HEAD_REMAINING,
-            "head_remaining_minutes": CHAR_HEAD_REMAINING_MINUTES,
-            "shaving_time": CHAR_SHAVING_TIME,
-            "shaving_settings": CHAR_SHAVING_MODE_SETTINGS,
-            "total_age": CHAR_TOTAL_AGE,
-        }
-        return mapping.get(key, "")
-
     async def _start_all_notifications(self) -> None:
         """Starts all GATT-Notifications for Live-Updates."""
         if not self.live_client or not self.live_client.is_connected:
             return
 
-        notifications = [
-            (CHAR_DEVICE_STATE, "device_state"),
-            (CHAR_TRAVEL_LOCK, "travel_lock"),
-            (CHAR_BATTERY_LEVEL, "battery"),
-            (CHAR_AMOUNT_OF_CHARGES, "amount_of_charges"),
-            (CHAR_AMOUNT_OF_OPERATIONAL_TURNS, "amount_of_operational_turns"),
-            (CHAR_CLEANING_PROGRESS, "cleaning_progress"),
-            (CHAR_CLEANING_CYCLES, "cleaning_cycles"),
-            (CHAR_MOTOR_RPM, "motor_rpm"),
-            (CHAR_MOTOR_CURRENT, "motor_current_ma"),
-            (CHAR_PRESSURE, "pressure"),
-            (CHAR_HEAD_REMAINING, "head_remaining"),
-            (CHAR_HEAD_REMAINING_MINUTES, "head_remaining_minutes"),
-            (CHAR_SHAVING_TIME, "shaving_time"),
-            (CHAR_SHAVING_MODE_SETTINGS, "shaving_settings"),
-            (CHAR_TOTAL_AGE, "total_age"),
-        ]
-
-        for char_uuid, key in notifications:
+        for char_uuid, key in self.KEY_TO_UUID_MAPPING.items():
             try:
+                # Re-use pre-created callback to avoid memory churn
                 await self.live_client.start_notify(
-                    char_uuid, self._make_live_callback(key)
+                    char_uuid, self._live_callbacks[key]
                 )
                 _LOGGER.debug("Started notifications for %s", key)
             except Exception as e:
@@ -621,25 +588,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not self.live_client or not self.live_client.is_connected:
             return
 
-        char_uuids = [
-            CHAR_DEVICE_STATE,
-            CHAR_TRAVEL_LOCK,
-            CHAR_BATTERY_LEVEL,
-            CHAR_AMOUNT_OF_CHARGES,
-            CHAR_AMOUNT_OF_OPERATIONAL_TURNS,
-            CHAR_CLEANING_PROGRESS,
-            CHAR_CLEANING_CYCLES,
-            CHAR_MOTOR_RPM,
-            CHAR_MOTOR_CURRENT,
-            CHAR_PRESSURE,
-            CHAR_HEAD_REMAINING,
-            CHAR_HEAD_REMAINING_MINUTES,
-            CHAR_SHAVING_TIME,
-            CHAR_SHAVING_MODE_SETTINGS,
-            CHAR_TOTAL_AGE,
-        ]
-
-        for char_uuid in char_uuids:
+        for char_uuid in self.KEY_TO_UUID_MAPPING.values():
             try:
                 await self.live_client.stop_notify(char_uuid)
                 _LOGGER.debug("Stopped notifications for %s", char_uuid)
