@@ -45,7 +45,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PhilipsShaverOptionsFlow(OptionsFlowWithReload):
-    """Options flow für Philips Shaver."""
+    """Options flow for Philips Shaver."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -107,7 +107,7 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
 
     discovery_info: BluetoothServiceInfoBleak | None = None
 
-    # Zwischenspeicher für Daten zwischen den Steps
+    # Buffer for data between steps
     fetched_data: dict[str, Any] | None = None
     fetched_address: str | None = None
     fetched_name: str | None = None
@@ -147,12 +147,12 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
             if services.get_characteristic(CHAR_CAPABILITIES):
                 raw_cap = await client.read_gatt_char(CHAR_CAPABILITIES)
                 if raw_cap:
-                    # WICHTIG: Als Int speichern für JSON Serialisierung
+                    # IMPORTANT: Store as int for JSON serialization
                     cap_int = int.from_bytes(raw_cap, "little")
                     capabilities["capabilities"] = cap_int
             else:
                 capabilities["capabilities"] = (
-                    0  # Fallback 0 statt None für einfachere Handhabung
+                    0  # Fallback 0 instead of None for easier handling
                 )
 
         except (BleakConnectionError, TimeoutError) as err:
@@ -173,7 +173,7 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
 
         self.discovery_info = discovery_info
 
-        # Direkt zur Bestätigung, Unpaired-Check entfernt
+        # Directly to confirmation, unpaired check removed
         return await self.async_step_bluetooth_confirm()
 
     async def async_step_bluetooth_confirm(
@@ -185,19 +185,19 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                # 1. Daten holen
+                # 1. Fetch data
                 capabilities = await self._async_fetch_capabilities(
                     self.discovery_info.address
                 )
 
-                # 2. Daten zwischenspeichern
+                # 2. Buffer data
                 self.fetched_data = capabilities
                 self.fetched_address = self.discovery_info.address
                 self.fetched_name = (
                     self.discovery_info.name or self.discovery_info.address
                 )
 
-                # 3. Weiterleiten zur Anzeige (statt create_entry)
+                # 3. Forward to display (instead of create_entry)
                 return await self.async_step_show_capabilities()
 
             except Exception:
@@ -230,15 +230,15 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             try:
-                # 1. Daten holen
+                # 1. Fetch data
                 capabilities = await self._async_fetch_capabilities(address)
 
-                # 2. Daten zwischenspeichern
+                # 2. Buffer data
                 self.fetched_data = capabilities
                 self.fetched_address = address
                 self.fetched_name = address
 
-                # 3. Weiterleiten zur Anzeige
+                # 3. Forward to display
                 return await self.async_step_show_capabilities()
 
             except Exception:
@@ -262,7 +262,7 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
         if self.fetched_data is None:
             return await self.async_step_user()
 
-        # Wenn der User bestätigt -> Eintrag erstellen
+        # If the user confirms -> create entry
         if user_input is not None:
             return self.async_create_entry(
                 title=f"Philips Shaver ({self.fetched_name})",
@@ -303,9 +303,9 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
         return PhilipsShaverOptionsFlow()
 
     def _get_service_status_text(self, fetched_uuids: list[str]) -> str:
-        """Vergleicht gefundene Services mit PHILIPS_SERVICE_UUIDS und gibt formatierten Text zurück."""
+        """Compares found services with PHILIPS_SERVICE_UUIDS and returns formatted text."""
 
-        # Listen normalisieren (Kleinschreibung)
+        # Normalize lists (lowercase)
         fetched_lower = [s.lower() for s in fetched_uuids]
         required_lower = [s.lower() for s in PHILIPS_SERVICE_UUIDS]
 
@@ -313,17 +313,17 @@ class PhilipsShaverConfigFlow(ConfigFlow, domain=DOMAIN):
         missing_required = []
         unknown_services = []
 
-        # 1. Erwartete Services prüfen (sortiert)
+        # 1. Check expected services (sorted)
         for uuid in sorted(required_lower):
             if uuid in fetched_lower:
                 found_required.append(f"✅ {uuid}")
             else:
                 missing_required.append(f"❌ {uuid}")
 
-        # 2. Unbekannte Services identifizieren (sortiert)
+        # 2. Identify unknown services (sorted)
         for uuid in sorted(fetched_lower):
             if uuid not in required_lower:
                 unknown_services.append(f"❔ {uuid}")
 
-        # Alles zusammenführen
+        # Combine everything
         return "\n".join(found_required + missing_required + unknown_services)

@@ -106,7 +106,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=self.poll_interval_seconds),
         )
 
-        # Initialer leerer Datensatz
+        # Initial empty data set
         self.data = {
             "battery": None,
             "firmware": None,
@@ -147,16 +147,16 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.info("Live updates disabled – polling only")
 
     def _start_advertisement_logging(self) -> None:
-        """Loggt jedes Advertisement des Rasierers (super hilfreich beim Debuggen)."""
+        """Logs every advertisement of the shaver (very helpful for debugging)."""
 
         @callback
         def _advertisement_debug_callback(service_info, change):
             adv = service_info.advertisement
-            _LOGGER.debug(  # debug statt warning → nicht so laut
+            _LOGGER.debug(  # debug instead of warning -> less noisy
                 "ADVERTISEMENT %s | Name: %s | RSSI: %s dBm | "
                 "Mfr: %s | SvcData: %s | SvcUUIDs: %s",
                 service_info.address,
-                service_info.name or "unbekannt",
+                service_info.name or "unknown",
                 service_info.rssi,
                 (
                     {k: v.hex() for k, v in adv.manufacturer_data.items()}
@@ -171,7 +171,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 adv.service_uuids or "none",
             )
 
-        # Nur für dieses eine Gerät loggen
+        # Log only for this specific device
         self._unsub_adv_debug = async_register_callback(
             self.hass,
             _advertisement_debug_callback,
@@ -180,22 +180,22 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     # ------------------------------------------------------------------
-    # Wird vom Coordinator automatisch aufgerufen (Polling)
+    # Called automatically by the coordinator (polling)
     # ------------------------------------------------------------------
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data via polling fallback."""
 
-        # 1. Live-Verbindung aktiv → sofort überspringen
+        # 1. Live connection active -> skip immediately
         if self.live_client and self.live_client.is_connected:
             _LOGGER.debug("Live connection active – polling skipped")
             return self.data or {}
 
         # if data is null
         if self.data is None:
-            # Fallback initialisieren, falls self.data None ist
+            # Initialize fallback if self.data is None
             self.data = {}
 
-        # 2. Wir hatten vor weniger als 2 Minuten Live-Daten → auch überspringen!
+        # 2. We had live data recently -> also skip!
         last_seen = self.data.get("last_seen")
         if last_seen:
             age = (datetime.now() - last_seen).total_seconds()
@@ -220,7 +220,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 raise UpdateFailed(f"Error communicating with device: {err}") from err
 
     # ------------------------------------------------------------------
-    # Gemeinsame Verarbeitung für Poll + Live
+    # Common processing for poll + live
     # ------------------------------------------------------------------
     def _process_results(self, results: dict[str, bytes | None]) -> dict[str, Any]:
         """Process raw GATT values into coordinator data – using proper constants."""
@@ -255,7 +255,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 new_data["serial_number"] = val
                 changed = True
 
-        # === Philips-spezifische Characteristics ===
+        # === Philips-specific Characteristics ===
         if raw := results.get(CHAR_HEAD_REMAINING):
             val = raw[0]
             if new_data.get("head_remaining") != val:
@@ -336,7 +336,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 new_data["amount_of_operational_turns"] = val
                 changed = True
 
-        # === Farben ===
+        # === Colors ===
         color_map = {
             CHAR_LIGHTRING_COLOR_LOW: "color_low",
             CHAR_LIGHTRING_COLOR_OK: "color_ok",
@@ -388,13 +388,13 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 new_data["total_age"] = val
                 changed = True
 
-        # Device Registry Update (nur wenn sich Modell oder FW geändert haben)
+        # Device Registry Update (only if model or FW has changed)
         if changed and (new_data.get("model_number") or new_data.get("firmware")):
             from homeassistant.helpers import device_registry as dr
             dev_reg = dr.async_get(self.hass)
             device = dev_reg.async_get_device(identifiers={(DOMAIN, self.address)})
             if device:
-                # Nur updaten, wenn wirklich neuere Daten da sind
+                # Only update if there is actually newer data
                 if (device.model != new_data.get("model_number") or 
                     device.sw_version != new_data.get("firmware")):
                     dev_reg.async_update_device(
@@ -403,29 +403,29 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         sw_version=new_data.get("firmware"),
                     )
 
-        # Immer aktualisieren – aber nur den internen Zeitstempel
+        # Always update – but only the internal timestamp
         new_data["last_seen"] = datetime.now()
 
-        # NUR wenn sich wirklich Daten geändert haben, geben wir das neue Dict zurück
-        # für DataUpdateCoordinator. Ansonsten bleiben wir beim alten Stand.
+        # ONLY if data has actually changed do we return the new dict
+        # for DataUpdateCoordinator. Otherwise, we stay with the old state.
         if changed:
             return new_data
         
-        # Falls sich nichts geändert hat, wir aber last_seen aktualisieren wollen,
-        # machen wir das in-place im existierenden Dict, ohne einen Listener-Update
-        # zu triggern (async_set_updated_data).
+        # If nothing has changed but we want to update last_seen,
+        # we do it in-place in the existing dict without triggering a listener update
+        # (async_set_updated_data).
         if self.data:
             self.data["last_seen"] = new_data["last_seen"]
         
         return self.data
 
     async def _start_live_monitoring(self) -> None:
-        """Dauerhafte Live-Verbindung mit Notifications – exklusiv und intelligent."""
+        """Permanent live connection with notifications – exclusive and intelligent."""
         backoff = 5
         max_backoff = 300
 
         while True:
-            # Nur versuchen, wenn gerade niemand verbunden ist
+            # Only try if no one is currently connected
             async with self._connection_lock:
                 try:
                     service_info = async_last_service_info(self.hass, self.address)
@@ -439,11 +439,11 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         backoff = min(backoff * 2, max_backoff)
                         continue
 
-                    # Reset backoff bei Sichtkontakt
+                    # Reset backoff when device is seen
                     backoff = 5
 
                     if self.live_client and self.live_client.is_connected:
-                        # Sollte nie passieren – aber sicher
+                        # Should never happen – but just in case
                         await asyncio.sleep(5)
                         continue
 
@@ -462,7 +462,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                     self.live_client = client
 
-                    # Initial alle LIVE-Chars lesen
+                    # Initially read all LIVE characteristics
                     results = {}
                     for uuid in LIVE_READ_CHARS:
                         try:
@@ -476,7 +476,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     new_data = self._process_results(results)
                     self.async_set_updated_data(new_data)
 
-                    # === Notifications starten ===
+                    # === Start notifications ===
                     await self._start_all_notifications()
                     _LOGGER.info("Live monitoring active – polling paused")
 
@@ -494,7 +494,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     backoff = min(backoff * 2, max_backoff)
                     continue
 
-            # Außerhalb des Locks: warten bis disconnect
+            # Outside the lock: wait until disconnect
             try:
                 while self.live_client and self.live_client.is_connected:
                     await asyncio.sleep(1)
@@ -513,24 +513,24 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         pass
                     self.live_client = None
                 _LOGGER.info("Live connection ended – polling will resume")
-                await asyncio.sleep(5)  # kurze Pause vor reconnect
+                await asyncio.sleep(5)  # short pause before reconnect
 
     def _make_live_callback(self, key: str):
-        """Erzeugt einen Live-Callback, der exakt wie _process_results() arbeitet."""
+        """Creates a live callback that works exactly like _process_results()."""
 
         @callback
         def _callback(_sender, data):
             if not data:
                 return
 
-            # Wir simulieren ein results-Dict mit nur dieser einen Characteristic
+            # We simulate a results dict with only this one characteristic
             fake_results = {self._key_to_uuid(key): data}
 
-            # _process_results() macht alles: Typkonvertierung, Mapping, etc.
+            # _process_results() does everything: type conversion, mapping, etc.
             new_data = self._process_results(fake_results)
 
             if new_data == self.data:
-                return  # nichts geändert
+                return  # nothing changed
 
             self.async_set_updated_data(new_data)
 
@@ -617,10 +617,10 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 await self.live_client.stop_notify(char_uuid)
                 _LOGGER.debug("Stopped notifications for %s", char_uuid)
             except Exception:
-                pass  # ignore – wird eh disconnected
+                pass  # ignore – will be disconnected anyway
 
     async def async_shutdown(self) -> None:
-        """Wird beim Unload aufgerufen – räumt alles sauber auf."""
+        """Called on unload – cleans everything up properly."""
         await self._stop_all_notifications()
 
         if hasattr(self, "_unsub_adv_debug") and self._unsub_adv_debug:

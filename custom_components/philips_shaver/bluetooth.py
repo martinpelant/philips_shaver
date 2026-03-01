@@ -18,7 +18,7 @@ async def connect_and_read(
     read_uuids: list[str],
     connect_timeout: float = 15.0,
 ) -> dict[str, bytes | None]:
-    """Verbinde, lese und trenne – nur für Poll (Fallback)."""
+    """Connect, read and disconnect – only for polling (fallback)."""
     data: dict[str, bytes | None] = {uuid: None for uuid in read_uuids}
     client: BleakClient | None = None
 

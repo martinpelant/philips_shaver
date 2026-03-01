@@ -31,13 +31,13 @@ class PhilipsShaverEntity(CoordinatorEntity[PhilipsShaverCoordinator]):
         self.entry = entry
         self._address = entry.data["address"]
 
-        # Device-Info wird beim ersten Mal gesetzt
+        # Device-Info is set for the first time
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, self._address)},
             connections={(dr.CONNECTION_BLUETOOTH, self._address)},
             manufacturer="Philips",
             name="Philips Shaver",
-            # Model und Firmware kommen später → werden in _handle_coordinator_update aktualisiert
+            # Model and firmware come later -> updated in the coordinator
         )
 
     @callback

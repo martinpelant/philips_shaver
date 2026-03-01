@@ -1,12 +1,12 @@
 DOMAIN = "philips_shaver"
 
 PHILIPS_SERVICE_UUIDS = [
-    # Philips Spezifische Services
-    "8d560100-3cb9-4387-a7e8-b79d826a7025",  # Device Properties (Modell, Seriennummer)
-    "8d560200-3cb9-4387-a7e8-b79d826a7025",  # Unknown Service (Batterie-Rohdaten, Firmware, Alter)
-    "8d560300-3cb9-4387-a7e8-b79d826a7025",  # Control Service (Modus, Lichtring)
-    "8d560600-3cb9-4387-a7e8-b79d826a7025",  # Cleaning Service (Reinigung)
-    # Standard Bluetooth Services (werden für Standard-Charakteristiken benötigt)
+    # Philips Specific Services
+    "8d560100-3cb9-4387-a7e8-b79d826a7025",  # Device Properties (Model, Serial Number)
+    "8d560200-3cb9-4387-a7e8-b79d826a7025",  # Unknown Service (Battery Raw Data, Firmware, Age)
+    "8d560300-3cb9-4387-a7e8-b79d826a7025",  # Control Service (Mode, Light Ring)
+    "8d560600-3cb9-4387-a7e8-b79d826a7025",  # Cleaning Service (Cleaning)
+    # Standard Bluetooth Services (required for standard characteristics)
     "0000180f-0000-1000-8000-00805f9b34fb",  # Battery Service (0x180F)
     "0000180a-0000-1000-8000-00805f9b34fb",  # Device Information Service (0x180A)
 ]
@@ -90,7 +90,7 @@ CHAR_HEAD_REMAINING_MINUTES = "8d560118-3cb9-4387-a7e8-b79d826a7025"
 CHAR_SHAVING_TIME = "8d56010f-3cb9-4387-a7e8-b79d826a7025"
 # 01=off, 02=shaving, 03=charging
 """
-	Unknown Characteristic => SHAVER_HANDLE_STATE_CHARACTERISTIC_UUID (01 = aktiv | 02 = charging)
+	Unknown Characteristic => SHAVER_HANDLE_STATE_CHARACTERISTIC_UUID (01 = active | 02 = charging)
 	UUID: 8d56010a-3cb9-4387-a7e8-b79d826a7025
 	Properties: NOTIFY, READ
 	Value: (0x) 01

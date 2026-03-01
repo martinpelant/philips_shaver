@@ -9,7 +9,7 @@ def parse_color(value: bytes | None):
     if not value or len(value) < 3:
         return None
 
-    # Philips liefert RGBA -> letzte Byte ignorieren
+    # Philips provides RGBA -> ignore last byte
     return (value[0], value[1], value[2])
 
 
@@ -67,9 +67,9 @@ def parse_capabilities(val: int) -> ShaverCapabilities:
 
 
 def get_real_timestamp(history_ts, total_age):
-    """Berechnet den echten Unix-Timestamp für einen History-Eintrag."""
-    now_seconds = time.time()  # Aktuelle Zeit in Sekunden
-    # Differenz zwischen Eintrag und aktuellem Gerätealter
+    """Calculates the real Unix timestamp for a history entry."""
+    now_seconds = time.time()  # Current time in seconds
+    # Difference between entry and current device age
     offset = history_ts - total_age
     return now_seconds + offset
 
@@ -80,17 +80,17 @@ def parse_pressure_history(total_age, raw_data: bytes) -> list[dict]:
 
     history = []
     block_size = 15
-    # Berechne, wie viele vollständige 15-Byte Blöcke enthalten sind
+    # Calculate how many complete 15-byte blocks are contained
     num_blocks = len(raw_data) // block_size
 
     for i in range(num_blocks):
         offset = i * block_size
         block = raw_data[offset : offset + block_size]
 
-        # Entpacken nach Schema:
+        # Unpack according to schema:
         # B = 1 Byte (UINT8)
-        # H = 2 Bytes (UINT16) -> 5 mal
-        # I = 4 Bytes (UINT32) -> 1 mal
+        # H = 2 Bytes (UINT16) -> 5 times
+        # I = 4 Bytes (UINT32) -> 1 time
         # < = Little Endian
         try:
             verdict, d_none, d_low, d_ok, d_high, avg, ts = struct.unpack(

@@ -72,7 +72,7 @@ async def async_setup_entry(
 
     async_add_entities(entities)
 
-    # Immer am Ende: Live-Sensoren je nach Option (de)aktivieren
+    # Always at the end: (de)activate live sensors depending on the option
     await _update_live_entity_visibility(hass, coordinator.address, enable_live)
 
 
@@ -103,7 +103,7 @@ async def _update_live_entity_visibility(
 
 
 # =============================================================================
-# Batterie
+# Battery
 # =============================================================================
 class PhilipsBatterySensor(PhilipsShaverEntity, SensorEntity):
     _attr_translation_key = "battery"
@@ -157,7 +157,7 @@ class PhilipsAmountOfChargesSensor(PhilipsShaverEntity, SensorEntity):
 # Amount of Operational Turns
 # =============================================================================
 class PhilipsShaverAmountOfOperationalTurnsSensor(PhilipsShaverEntity, SensorEntity):
-    """Sensor für die Anzahl der Einschaltvorgänge."""
+    """Sensor for the number of operational turns."""
 
     _attr_translation_key = "amount_of_operational_turns"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
@@ -196,7 +196,7 @@ class PhilipsFirmwareSensor(PhilipsShaverEntity, SensorEntity):
 
 
 # =============================================================================
-# Restliche Sensoren
+# Other Sensors
 # =============================================================================
 class PhilipsHeadRemainingSensor(PhilipsShaverEntity, SensorEntity):
     _attr_translation_key = "head_remaining"
@@ -267,7 +267,7 @@ class PhilipsShavingTimeSensor(PhilipsShaverEntity, SensorEntity):
 
 
 # =============================================================================
-# Select & Binary Sensoren
+# Select & Binary Sensors
 # =============================================================================
 class PhilipsDeviceStateSensor(PhilipsShaverEntity, SensorEntity):
     _attr_translation_key = "device_state"
@@ -516,7 +516,7 @@ class PhilipsMotorCurrentSensor(PhilipsShaverEntity, SensorEntity):
 
 
 class PhilipsMotorCurrentMaxSensor(PhilipsShaverEntity, SensorEntity):
-    """Statische Schwelle für das Motor-Stromlimit."""
+    """Static threshold for the motor current limit."""
 
     _attr_translation_key = "motor_current_max"
     _attr_native_unit_of_measurement = "mA"
@@ -602,7 +602,7 @@ class PhilipsShavingModeSensor(PhilipsShaverEntity, SensorEntity):
 # Pressure
 # =============================================================================
 class PhilipsShaverPressureSensor(PhilipsShaverEntity, SensorEntity):
-    """Numerischer Drucksensor für Rohwerte."""
+    """Numerical pressure sensor for raw values."""
 
     _attr_translation_key = "pressure"
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -621,7 +621,7 @@ class PhilipsShaverPressureSensor(PhilipsShaverEntity, SensorEntity):
 
 
 class PhilipsShaverPressureStateSensor(PhilipsShaverEntity, SensorEntity):
-    """Status-Sensor für das Druck-Feedback (Enum)."""
+    """Status sensor for pressure feedback (Enum)."""
 
     _attr_translation_key = "pressure_state"
     _attr_device_class = SensorDeviceClass.ENUM
@@ -640,7 +640,7 @@ class PhilipsShaverPressureStateSensor(PhilipsShaverEntity, SensorEntity):
         if pressure is None:
             return None
 
-        # Dynamische Schwellenwerte aus dem Coordinator holen
+        # Fetch dynamic threshold values from the coordinator
         mode_id = self.coordinator.data.get("shaving_mode_value")
         settings = self.coordinator.data.get(
             "custom_shaving_settings" if mode_id == 3 else "shaving_settings"
@@ -663,7 +663,7 @@ class PhilipsShaverPressureStateSensor(PhilipsShaverEntity, SensorEntity):
 
     @property
     def icon(self) -> str:
-        """Dynamisches Icon basierend auf dem Status."""
+        """Dynamic icon based on the status."""
         state = self.native_value
         if state == "optimal":
             return "mdi:check-circle"
@@ -678,7 +678,7 @@ class PhilipsShaverPressureStateSensor(PhilipsShaverEntity, SensorEntity):
 # Total Age Sensor
 # =============================================================================
 class PhilipsTotalAgeSensor(PhilipsShaverEntity, SensorEntity):
-    """Sensor für das Gesamtalter des Geräts (Betriebssekunden)."""
+    """Sensor for the total age of the device (operating seconds)."""
 
     _attr_translation_key = "total_age"
     _attr_native_unit_of_measurement = UnitOfTime.SECONDS

@@ -27,7 +27,7 @@ async def async_setup_entry(
 
 
 class PhilipsShavingModeSelect(PhilipsShaverEntity, SelectEntity):
-    """Steuerung des Rasiermodus (Sanft, Normal, Intensiv, Persönlich, Schaum)."""
+    """Control of the shaving mode (Sensitive, Regular, Intense, Custom, Foam)."""
 
     _attr_translation_key = "shaving_mode"
     _attr_options = ["sensitive", "regular", "intense", "custom", "foam", "battery_saving"]
@@ -39,24 +39,24 @@ class PhilipsShavingModeSelect(PhilipsShaverEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Gibt den aktuell im Coordinator gespeicherten Modus zurück."""
+        """Returns the mode currently stored in the coordinator."""
         mode_id = self.coordinator.data.get("shaving_mode_value")
 
-        # Mapping basierend auf der Sensor-Logik
+        # Mapping based on the sensor logic
         return SHAVING_MODES.get(mode_id)
 
     async def async_select_option(self, option: str) -> None:
-        """Sendet den gewählten Modus an den Rasierer – Muster aus light.py."""
+        """Sends the selected mode to the shaver – pattern from light.py."""
         client = self.coordinator.live_client
 
-        # 1. Verbindung prüfen
+        # 1. Check connection
         if not client or not client.is_connected:
             _LOGGER.warning(
                 "Shaver not connected – cannot set shaving mode to %s", option
             )
             return
 
-        # 2. Mapping der Auswahl auf Hex-Werte (sensitive=0x00)
+        # 2. Mapping the selection to hex values (sensitive=0x00)
         write_mapping = {
             "sensitive": 0x00,
             "regular": 0x01,
@@ -70,7 +70,7 @@ class PhilipsShavingModeSelect(PhilipsShaverEntity, SelectEntity):
         if val is None:
             return
 
-        # 3. Schreibvorgang ausführen
+        # 3. Execute write operation
         try:
             await client.write_gatt_char(CHAR_SHAVING_MODE, bytes([val]))
             _LOGGER.info("Shaving mode set to %s (0x%02x)", option, val)
@@ -78,7 +78,7 @@ class PhilipsShavingModeSelect(PhilipsShaverEntity, SelectEntity):
             _LOGGER.error("Failed to write shaving mode %s: %s", option, e)
             return
 
-        # 4. Coordinator sofort lokal aktualisieren
+        # 4. Update coordinator immediately locally
         new_data = self.coordinator.data.copy()
         new_data["shaving_mode_value"] = val
         new_data["shaving_mode"] = option
@@ -88,7 +88,7 @@ class PhilipsShavingModeSelect(PhilipsShaverEntity, SelectEntity):
 
     @property
     def icon(self) -> str:
-        """Nutzt die dynamische Icon-Logik deiner Sensor-Klasse."""
+        """Uses the dynamic icon logic of your sensor class."""
         mode_id = self.coordinator.data.get("shaving_mode_value")
         ICONS = {
             0: "mdi:feather",  # sensitive
