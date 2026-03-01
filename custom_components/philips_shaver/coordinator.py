@@ -444,6 +444,12 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         
         return self.data
 
+    @callback
+    def _on_disconnect(self, _client: BleakClient) -> None:
+        """Handle disconnected device."""
+        _LOGGER.info("Live connection lost (remote disconnect)")
+        self.live_client = None
+
     async def _start_live_monitoring(self) -> None:
         """Permanent live connection with notifications – exclusive and intelligent."""
         backoff = 5
@@ -472,16 +478,12 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         await asyncio.sleep(5)
                         continue
 
-                    def _on_disconnect(_client):
-                        _LOGGER.info("Live connection lost (remote disconnect)")
-                        self.live_client = None
-
-                    _LOGGER.info("Establishing live connection to %s...", self.address)
+                    _LOGGER.debug("Establishing live connection to %s...", self.address)
                     client = await shaver_bluetooth.establish_connection(
                         BleakClient,
                         service_info.device,
                         "philips_shaver",
-                        disconnected_callback=_on_disconnect,
+                        disconnected_callback=self._on_disconnect,
                         timeout=15.0,
                     )
 
@@ -647,6 +649,7 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_shutdown(self) -> None:
         """Called on unload – cleans everything up properly."""
         await self._stop_all_notifications()
+        self._live_callbacks.clear()
 
         if hasattr(self, "_unsub_adv_debug") and self._unsub_adv_debug:
             self._unsub_adv_debug()

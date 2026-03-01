@@ -37,13 +37,13 @@ async def connect_and_read(
             _LOGGER.warning("Failed to connect to %s", address)
             return data
 
-        _LOGGER.info("Connected to %s – reading characteristics", address)
+        _LOGGER.debug("Connected to %s – reading characteristics", address)
 
         for uuid in read_uuids:
             try:
                 value = await client.read_gatt_char(uuid)
                 if value:
-                    _LOGGER.info("Read %s: %s (hex: %s)", uuid, value[0], value.hex())
+                    _LOGGER.debug("Read %s: %s (hex: %s)", uuid, value[0], value.hex())
                     data[uuid] = bytes(value)
                 else:
                     _LOGGER.warning("Empty value for %s", uuid)
