@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.config_entries import ConfigEntry
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.components.bluetooth import (
     BluetoothCallbackMatcher,
     BluetoothScanningMode,
@@ -20,6 +21,7 @@ from homeassistant.components.bluetooth import (
 )
 
 from . import bluetooth as shaver_bluetooth
+# ... (rest of imports are same)
 from .const import (
     CHAR_AMOUNT_OF_CHARGES,
     CHAR_AMOUNT_OF_OPERATIONAL_TURNS,
@@ -68,6 +70,24 @@ _LOGGER = logging.getLogger(__name__)
 class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Data update coordinator for Philips Shaver."""
 
+    KEY_TO_UUID_MAPPING = {
+        "device_state": CHAR_DEVICE_STATE,
+        "travel_lock": CHAR_TRAVEL_LOCK,
+        "battery": CHAR_BATTERY_LEVEL,
+        "amount_of_charges": CHAR_AMOUNT_OF_CHARGES,
+        "amount_of_operational_turns": CHAR_AMOUNT_OF_OPERATIONAL_TURNS,
+        "cleaning_progress": CHAR_CLEANING_PROGRESS,
+        "cleaning_cycles": CHAR_CLEANING_CYCLES,
+        "motor_rpm": CHAR_MOTOR_RPM,
+        "motor_current_ma": CHAR_MOTOR_CURRENT,
+        "pressure": CHAR_PRESSURE,
+        "head_remaining": CHAR_HEAD_REMAINING,
+        "head_remaining_minutes": CHAR_HEAD_REMAINING_MINUTES,
+        "shaving_time": CHAR_SHAVING_TIME,
+        "shaving_settings": CHAR_SHAVING_MODE_SETTINGS,
+        "total_age": CHAR_TOTAL_AGE,
+    }
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -92,6 +112,12 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.live_client: BleakClient | None = None
         self._connection_lock = asyncio.Lock()
         self._live_task: asyncio.Task | None = None
+
+        # Pre-create live callbacks to avoid garbage collection churn
+        self._live_callbacks = {
+            key: self._make_live_callback(key)
+            for key in self.KEY_TO_UUID_MAPPING
+        }
 
         _LOGGER.debug(
             "Initializing coordinator for %s with poll interval %s seconds (live updates: %s)",
@@ -390,7 +416,6 @@ class PhilipsShaverCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Device Registry Update (only if model or FW has changed)
         if changed and (new_data.get("model_number") or new_data.get("firmware")):
-            from homeassistant.helpers import device_registry as dr
             dev_reg = dr.async_get(self.hass)
             device = dev_reg.async_get_device(identifiers={(DOMAIN, self.address)})
             if device:
